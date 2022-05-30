@@ -1,1 +1,2 @@
-export * from './sample'
+export { makeContextComponent } from './contextComponent'
+export { makeBasicContextComponent } from './contextComponentBasic'

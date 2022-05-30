@@ -1,6 +1,9 @@
 {
-  "name": "your-package-name",
+  "name": "@digimuza/react-utils",
   "description": "Description",
+  "publishConfig": {
+    "access": "public"
+  },
   "version": "0.0.1",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -49,8 +52,8 @@
   "devDependencies": {
     "@types/jest": "^27.5.1",
     "@types/node": "^13.13.5",
-    "jest": "^28.1.0",
     "git-conventional-commits": "^1.2.0",
+    "jest": "^28.1.0",
     "prettier": "^2.6.2",
     "ts-jest": "^28.0.3",
     "tslib": "^2.4.0",
