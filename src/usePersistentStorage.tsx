@@ -1,54 +1,63 @@
 import React from 'react'
 import * as P from 'ts-prime'
-
+import { BehaviorSubject, distinctUntilChanged, map } from 'rxjs'
+import { useObservable } from './useObservable'
 export function makeItemsStorage<X>(persistent?: { get(): Record<string, X>; set(data: Record<string, X>): void }) {
-	const cx = React.createContext<[Record<string, X>, (data: Record<string, X>) => void] | null>(null)
+	const store = new BehaviorSubject<Record<string, X>>({})
+	const cx = React.createContext<BehaviorSubject<Record<string, X>>>(store)
 	function useSingleItem(key: string) {
-		const ctxValue = React.useContext(cx)
-		if (ctxValue == null) throw new Error(`Items storage context was not provided!`)
-		const [rec, setRec] = ctxValue
+		const value = useObservable(
+			store.pipe(
+				map((q) => q[key]),
+				distinctUntilChanged()
+			),
+			[key]
+		)
 
 		return {
-			item: rec[key] || null,
+			item: value,
 			set(data: X) {
-				setRec({
-					...rec,
+				store.next({
+					...store.getValue(),
 					[key]: data,
 				})
 			},
 			delete() {
-				setRec(P.omit(rec, [key]))
+				store.next(P.omit(store.getValue(), [key]))
 			},
 		}
 	}
 
 	function useItems() {
-		const ctxValue = React.useContext(cx)
-		if (ctxValue == null) throw new Error(`Items storage context was not provided!`)
-		const [rec, setRec] = ctxValue
-
+		const val = useObservable(store, [])
 		return {
-			items: rec,
+			items: val,
 			set(data: Record<string, X>) {
-				setRec(data)
+				store.next(data)
 			},
 			delete(key: string) {
-				setRec(P.omit(rec, [key]))
+				store.next(P.omit(store.getValue(), [key]))
 			},
 		}
 	}
 	return {
 		ItemsStorageContext: (props: React.PropsWithChildren<{ initial?: Record<string, X> }>) => {
-			const [state, setState] = React.useState({
-				...(persistent?.get() || {}),
-				...(props.initial || {}),
-			})
 			React.useEffect(() => {
-				persistent?.set(state)
-			}, [state])
-			return <cx.Provider value={[state, setState]}>{props.children}</cx.Provider>
+				const x = persistent?.get()
+				if (x) {
+					store.next(x)
+				}
+				const subscribe = store.subscribe((s) => {
+					persistent?.set(s)
+				})
+				return () => {
+					subscribe.unsubscribe()
+				}
+			}, [store])
+			return <cx.Provider value={store}>{props.children}</cx.Provider>
 		},
 		useSingleItemStorage: useSingleItem,
 		useItemsStorage: useItems,
+		store,
 	}
 }

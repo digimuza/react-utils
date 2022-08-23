@@ -4,7 +4,8 @@ import { BehaviorSubject, Observable, ObservedValueOf, tap } from 'rxjs'
 import * as P from 'ts-prime'
 
 export function useObservable<T extends Observable<unknown> | BehaviorSubject<unknown>>(
-	obs: T
+	obs: T,
+	deps: any[]
 ): T extends BehaviorSubject<ObservedValueOf<T>> ? ObservedValueOf<T> : ObservedValueOf<T> | null {
 	const initialValue = obs instanceof BehaviorSubject ? obs.getValue() : null
 	const [data, set] = React.useState<any | null>(initialValue)
@@ -17,7 +18,7 @@ export function useObservable<T extends Observable<unknown> | BehaviorSubject<un
 		return () => {
 			P.canFail(() => sub.unsubscribe())
 		}
-	}, [obs])
+	}, [...deps])
 	if (obs instanceof BehaviorSubject) {
 		return data as any
 	}
