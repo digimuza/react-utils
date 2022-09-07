@@ -9,9 +9,14 @@ type ContextOutput<T> = {
 }
 
 export function makeContextComponent<T>(ctx: string): ContextOutput<T> {
-	const cont = React.createContext<BehaviorSubject<T | null>>(new BehaviorSubject(null))
-	function useCtx(): ReturnType<ContextOutput<T>['useContext']> {
+	const cont = React.createContext<BehaviorSubject<T> | null>(null)
+	function useStream() {
 		const ctxValue = React.useContext(cont)
+		if (ctxValue == null) throw new Error(`Context ${ctx} was not provided!`)
+		return ctxValue
+	}
+	function useContext(): ReturnType<ContextOutput<T>['useContext']> {
+		const ctxValue = useStream()
 		const bh = useObservable(ctxValue, [])
 		if (bh == null) throw new Error(`Context ${ctx} was not provided!`)
 		return [
@@ -22,16 +27,12 @@ export function makeContextComponent<T>(ctx: string): ContextOutput<T> {
 		]
 	}
 
-	function useStream() {
-		const ctxValue = React.useContext(cont)
-		return ctxValue as BehaviorSubject<T>
-	}
 	return {
 		ContextProvider: (props: React.PropsWithChildren<{ initialValue: T }>) => {
-			const sub = React.useRef(new BehaviorSubject(null))
+			const sub = React.useRef(new BehaviorSubject(props.initialValue))
 			return <cont.Provider value={sub.current}>{props.children}</cont.Provider>
 		},
 		useStream,
-		useContext: useCtx,
+		useContext,
 	}
 }
