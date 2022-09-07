@@ -1,23 +1,37 @@
 import * as React from 'react'
+import { BehaviorSubject } from 'rxjs'
+import { useObservable } from './useObservable'
 
 type ContextOutput<T> = {
 	ContextProvider: (props: React.PropsWithChildren<{ initialValue: T }>) => JSX.Element
 	useContext: () => [T, (data: T) => void]
+	useStream(): BehaviorSubject<T>
 }
 
 export function makeContextComponent<T>(ctx: string): ContextOutput<T> {
-	const cont = React.createContext<[T, (data: T) => void] | null>(null)
-	function useCtx() {
+	const cont = React.createContext<BehaviorSubject<T | null>>(new BehaviorSubject(null))
+	function useCtx(): ReturnType<ContextOutput<T>['useContext']> {
 		const ctxValue = React.useContext(cont)
-		if (ctxValue == null) throw new Error(`Context ${ctx} was not provided!`)
-		return ctxValue
+		const bh = useObservable(ctxValue, [])
+		if (bh == null) throw new Error(`Context ${ctx} was not provided!`)
+		return [
+			bh,
+			(data: T) => {
+				return ctxValue.next(data)
+			},
+		]
 	}
 
+	function useStream() {
+		const ctxValue = React.useContext(cont)
+		return ctxValue as BehaviorSubject<T>
+	}
 	return {
 		ContextProvider: (props: React.PropsWithChildren<{ initialValue: T }>) => {
-			const [state, setState] = React.useState(props.initialValue)
-			return <cont.Provider value={[state, setState]}>{props.children}</cont.Provider>
+			const sub = React.useRef(new BehaviorSubject(null))
+			return <cont.Provider value={sub.current}>{props.children}</cont.Provider>
 		},
+		useStream,
 		useContext: useCtx,
 	}
 }
